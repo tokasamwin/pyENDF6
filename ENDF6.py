@@ -50,7 +50,12 @@ def read_float(v):
     Convert ENDF6 string to float
     (the ENDF6 float representation omits the e for exponent and may contain blanks)
     """
-    return float( v[0]+v[1:].replace(' ', '').replace('+', 'e+').replace('-', 'e-') )
+    s=v[0]+v[1:].replace(' ', '').replace('+', 'e+').replace('-', 'e-')
+    if len(s.strip())==0:
+        return 
+    else:
+        return float(s)
+    #return float( v[0]+v[1:].replace(' ', '').replace('+', 'e+').replace('-', 'e-') )
 
 def read_line(l):
     """Read first 6*11 characters of a line as floats"""
@@ -65,13 +70,12 @@ def read_table(lines):
     """
     # header line 1: (100*Z+A), mass in [m_neutron]
     # [MAT, 3, MT/ ZA, AWR, 0, 0, 0, 0] HEAD
-
+    
     # header line 2: Q-value and some counts
     # [MAT, 3, MT/ QM, QI, 0, LR, NR, NP/ EINT/ S(E)] TAB1
     f = read_line(lines[1])
     nS = int(f[4])  # number of interpolation sections
     nP = int(f[5])  # number of data points
-
     # header line 3: interpolation information
     # [MAT, 3, 0/ 0.0, 0.0, 0, 0, 0, 0] SEND
     # 1   y is constant in x (constant, histogram)
@@ -80,11 +84,11 @@ def read_table(lines):
     # 4   ln(y) is linear in x (log-linear)
     # 5   ln(y) is linear in ln(x) (log-log)
     # 6   y obeys a Gamow charged-particle penetrability law
-
+    
     # data lines
     x = []
     y = []
-    for l in lines[3:-1]:
+    for l in lines[3:]:
         f = read_line(l)
         x.append(f[0])
         y.append(f[1])
@@ -92,7 +96,9 @@ def read_table(lines):
         y.append(f[3])
         x.append(f[4])
         y.append(f[5])
-    return np.array(x[0:nP]), np.array(y[0:nP])
+    x=[i for i in x if i is not None]
+    y=[i for i in y if i is not None]
+    return x, y
 
 def find_file(lines, MF=1):
     """Locate and return a certain section"""
@@ -118,7 +124,7 @@ def list_content(lines):
     s1 = slices['MF']
     s2 = slices['MT']
     content = set( ((int(l[s0]), int(l[s1]), int(l[s2])) for l in lines) )
-
+    
     # remove section delimiters
     for c in content.copy():
         if 0 in c:
